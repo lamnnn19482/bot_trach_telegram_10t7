@@ -1,0 +1,14 @@
+2025-07-08 16:46:44 | Short | Thắng | Cải thiện không fomo | 2R
+2025-07-08 18:59:13 | Short | Thua | giao dịch tại điện thoại. Ko biết rõ điểm dừng lỗ và mặc cười màu gì nhìn giá không chính xác trên icmarket cây nến không rõ có mặc cười hay không? | 2R
+2025-07-08 20:13:05 | Long | Thua | xác định sai vwap | 2R
+2025-07-08 20:47:23 | Short | Thắng | tuân thủ tất cả quy tắc | 2R
+2025-07-08 20:50:32 | Short | Thua | Tại vì chậm quá đang lẽ ra vào kịp rồi mà nhập thông tin nên trễ | 2R
+2025-07-09 14:17:30 | Short | Thắng | Đạt BE rồi vẫn ok chấp nhận | 2R
+2025-07-09 14:18:37 | Short | Thua | Sai quy tắc không có BIG trader nhưng vẫn vào lệnh | 2R
+2025-07-09 14:43:06 | Short | Thắng | Đạt BE nữa rồi | 2R
+2025-07-09 15:30:48 | Short | Thắng | tuân thủ theo quy tắc | nó chạy 10 giá luôn | 2R
+2025-07-09 15:41:48 | Short | Thua | không chờ mặc cười | 2R
+2025-07-09 16:10:01 | Short | Thắng | Đạt BE | thật sự nếu đạt 2.5 giá thì mơi giờ có lẽ đã lãi được 4 lệnh liên tục luôn rồi | 2R
+2025-07-09 19:10:45 | Short | Thắng | tuân thủ kết hoạch | 2R
+2025-07-09 19:27:27 | Short | Thua | Không tuân thủ quy tắc khi chưa có măc cười màu đỏ | 2R
+2025-07-10 08:13:42 | Long | Thắng | phút thứ 22 mới vào | 2R
