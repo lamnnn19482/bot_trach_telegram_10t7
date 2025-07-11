@@ -9,7 +9,7 @@ import asyncio
 logging.basicConfig(level=logging.INFO)
 
 # <editor-fold desc="Cấu hình Bot">
-BOT_TOKEN = "7301274609:AAE8DazQq8hbgdxM8bx3235xZjSrIq4K9qQ"
+BOT_TOKEN = "8083673988:AAERSdSxEp9NNZFBK9GSOr2C1UL7lmJj3UE"
 
 NOTE = (
     "💡 Sao rất nhiều lệnh trade: Nên chia nhỏ lệnh, tránh dồn một cục để bị quét một lần!\n"
@@ -17,12 +17,42 @@ NOTE = (
 )
 # </editor-fold>
 
-# Workflow 3 tầng đơn giản
-# Workflow theo yêu cầu
+# Workflow với kiểm tra khoảng cách VWAP
 WORKFLOW = {
     "step_1": {
-        "question": "Giá có trên VWAP không?",
-        "options": {"1": "step_2", "0": "step_2_below"}
+        "question": "Giá hiện tại đã nằm cách VWAP bao nhiêu giá rồi?",
+        "options": {
+            "⬆️ 9 giá VWAP 🟢": "vwap_warning_above_green",
+            "⬇️ 9 giá VWAP 🟢": "step_2", 
+            "⬆️ 9 giá VWAP 🔴": "vwap_warning_above_red",
+            "⬇️ 9 giá VWAP 🔴": "step_2_below"
+        }
+    },
+    "vwap_warning_above_green": {
+        "question": "🚨 CẢNH BÁO NGUY HIỂM! 🚨\n\n"
+                   "⚠️ ĐANG ĐÁNH NGƯỢC ĐÓ ⚠️\n\n"
+                   "🔥 GIÁ ĐÃ CÁCH VWAP QUÁ XA - RỦI RO CỰC CAO! 🔥\n\n"
+                   "💀 NẾU ĐÁNH NGƯỢC THÌ ENTRY PHẢI LÀ ĐIỂM ĐẦU TIÊN MỞ CỬA! 💀\n\n"
+                   "⚡ VÌ THỊ TRƯỜNG SẼ QUÉT HẾT! ⚡\n\n" + NOTE, 
+                 
+        "options": {}
+    },
+    "vwap_warning_above_red": {
+        "question": "🚨 CẢNH BÁO NGUY HIỂM! 🚨\n\n"
+                   "⚠️ ĐANG ĐÁNH NGƯỢC ⚠️\n\n"
+                   "🔥 GIÁ ĐÃ CÁCH VWAP QUÁ XA - RỦI RO CỰC CAO! 🔥\n\n"
+                   "💀 NẾU ĐÁNH NGƯỢC THÌ ENTRY PHẢI LÀ ĐIỂM ĐẦU TIÊN MỞ CỬA! 💀\n\n"
+                   "⚡ VÌ THỊ TRƯỜNG SẼ QUÉT HẾT! ⚡\n\n" + NOTE, 
+                  
+        "options": {}
+    },
+    "vwap_warning_below_green": {
+        "question": "⚠️ HÃY CẨN THẬN ĐẢO CHIỀU MÀY!\n\nGiá đã cách VWAP quá xa, rủi ro cao!\n\n" + NOTE,
+        "options": {}
+    },
+    "vwap_warning_below_red": {
+        "question": "⚠️ HÃY CẨN THẬN ĐẢO CHIỀU MÀY!\n\nGiá đã cách VWAP quá xa, rủi ro cao!\n\n" + NOTE,
+        "options": {}
     },
     "step_2": {
         "question": "Mặt cười màu gì?\n0 = Xanh\n1 = Đỏ",
@@ -105,7 +135,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 def get_keyboard(options): 
     keys = list(options.keys())
     random.shuffle(keys)
-    return [keys]
+    # Chia thành 2 hàng, mỗi hàng 2 button để dễ nhìn
+    if len(keys) == 4:
+        return [keys[:2], keys[2:]]
+    else:
+        return [keys]
 
 async def send_question(update, step_id):
     step = WORKFLOW[step_id]
@@ -304,29 +338,47 @@ async def welcome(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if update.message.text == "Kết quả thắng":
-        reasons = []
+        # Nhóm theo ngày
+        daily_results = {}
         try:
             with open("history.txt", "r", encoding="utf-8") as f:
                 for line in f:
                     parts = line.strip().split("|")
                     if len(parts) >= 4 and parts[2].strip() == "Thắng":
+                        date_str = parts[0].strip().split(" ")[0]  # Lấy ngày
                         reason = parts[3].strip()
                         if reason:
-                            reasons.append(reason)
+                            if date_str not in daily_results:
+                                daily_results[date_str] = []
+                            daily_results[date_str].append(reason)
         except FileNotFoundError:
-            reasons = []
-        if reasons:
-            # Sắp xếp theo bảng chữ cái và loại bỏ trùng lặp
-            unique_reasons = sorted(set(reasons), key=lambda x: x.lower())
-            formatted = [f"\U0001F3C6 *{r}*" for r in unique_reasons]
+            daily_results = {}
+        
+        if daily_results:
+            # Sắp xếp theo ngày (mới nhất trước)
+            sorted_dates = sorted(daily_results.keys(), reverse=True)
             max_len = 3500
-            title = "Các lý do thắng trong lịch sử:\n"
+            title = "Các lý do thắng theo ngày:\n"
             chunk = title
-            for i, line in enumerate(formatted):
-                if len(chunk) + len(line) + 1 > max_len:
+            
+            for date in sorted_dates:
+                # Loại bỏ trùng lặp trong ngày và sắp xếp
+                unique_reasons = sorted(set(daily_results[date]), key=lambda x: x.lower())
+                date_header = f"\n*{date}*:\n"
+                
+                if len(chunk) + len(date_header) > max_len:
                     await update.message.reply_text(chunk, parse_mode="Markdown")
                     chunk = title
-                chunk += line + "\n"
+                
+                chunk += date_header
+                
+                for reason in unique_reasons:
+                    line = f"  \U0001F3C6 *{reason}*"
+                    if len(chunk) + len(line) + 1 > max_len:
+                        await update.message.reply_text(chunk, parse_mode="Markdown")
+                        chunk = title + date_header
+                    chunk += line + "\n"
+            
             if chunk.strip() and chunk != title:
                 await update.message.reply_text(chunk, parse_mode="Markdown")
         else:
@@ -334,34 +386,88 @@ async def welcome(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if update.message.text == "Kết quả thua":
-        reasons = []
+        # Nhóm theo ngày
+        daily_results = {}
         try:
             with open("history.txt", "r", encoding="utf-8") as f:
                 for line in f:
                     parts = line.strip().split("|")
                     if len(parts) >= 4 and parts[2].strip() == "Thua":
+                        date_str = parts[0].strip().split(" ")[0]  # Lấy ngày
                         reason = parts[3].strip()
                         if reason:
-                            reasons.append(reason)
+                            if date_str not in daily_results:
+                                daily_results[date_str] = []
+                            daily_results[date_str].append(reason)
         except FileNotFoundError:
-            reasons = []
-        if reasons:
-            # Sắp xếp theo bảng chữ cái và loại bỏ trùng lặp
-            unique_reasons = sorted(set(reasons), key=lambda x: x.lower())
-            formatted = [f"\U0001F480 *{r}*" for r in unique_reasons]
+            daily_results = {}
+        
+        if daily_results:
+            # Sắp xếp theo ngày (mới nhất trước)
+            sorted_dates = sorted(daily_results.keys(), reverse=True)
             max_len = 3500
-            title = "Các lý do thua trong lịch sử:\n"
+            title = "Các lý do thua theo ngày:\n"
             chunk = title
-            for i, line in enumerate(formatted):
-                if len(chunk) + len(line) + 1 > max_len:
+            
+            for date in sorted_dates:
+                # Loại bỏ trùng lặp trong ngày và sắp xếp
+                unique_reasons = sorted(set(daily_results[date]), key=lambda x: x.lower())
+                date_header = f"\n*{date}*:\n"
+                
+                if len(chunk) + len(date_header) > max_len:
                     await update.message.reply_text(chunk, parse_mode="Markdown")
                     chunk = title
-                chunk += line + "\n"
+                
+                chunk += date_header
+                
+                for reason in unique_reasons:
+                    line = f"  \U0001F480 *{reason}*"
+                    if len(chunk) + len(line) + 1 > max_len:
+                        await update.message.reply_text(chunk, parse_mode="Markdown")
+                        chunk = title + date_header
+                    chunk += line + "\n"
+            
             if chunk.strip() and chunk != title:
                 await update.message.reply_text(chunk, parse_mode="Markdown")
         else:
             await update.message.reply_text("Chưa có lịch sử giao dịch thua nào.")
         return
+
+    # Xử lý khi user chọn số mặt cười (còn ít phút)
+    if context.user_data is not None and context.user_data.get('waiting_for_smile_count'):
+        context.user_data['waiting_for_smile_count'] = False
+        if not update.message or not update.message.text:
+            context.user_data['waiting_for_smile_count'] = True
+            return
+        user_answer = update.message.text.strip()
+        
+        if user_answer == "3":
+            # Đáp án đúng - đây là sự đảo chiều mạnh mẽ
+            await update.message.reply_text(
+                "ĐÂY LÀ SỰ ĐẢO CHIỀU MẠNH MẼ!\n\n"
+                "VÀO NGAY VÙNG ĐÁY VÀ SL 1 GIÁ\n\n" + NOTE
+            )
+            # Hiển thị nút kết quả thắng/thua như cũ
+            countdown_next = context.user_data.get('countdown_next')
+            options = {
+                "Kết quả giao dịch: Thắng": "reason_win" if countdown_next == "should_trade" else "reason_win_short",
+                "Kết quả giao dịch: Thua": "reason_lose" if countdown_next == "should_trade" else "reason_lose_short"
+            }
+            keyboard = [[KeyboardButton(opt)] for opt in options.keys()]
+            reply_markup = ReplyKeyboardMarkup(keyboard, one_time_keyboard=True, resize_keyboard=True)
+            await update.message.reply_text(
+                "Khi xong, hãy chọn kết quả giao dịch:",
+                reply_markup=reply_markup
+            )
+            if user_id is not None:
+                user_states[user_id] = countdown_next
+            return
+        else:
+            # Đáp án sai - vào là mất tiền, không cho chọn kết quả giao dịch, kết thúc luôn
+            await update.message.reply_text(
+                "❌ VÀO LÀ MẤT TIỀN NHA MẦY\n" * 5 + NOTE
+            )
+            return
 
     # Nếu user nhấn "Vào" thì vào workflow
     if update.message.text == "Vào":
@@ -392,22 +498,49 @@ async def welcome(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
         else:
             con_lai = 17 - da_troi
-            countdown_next = context.user_data.get('countdown_next') if context.user_data else None
-            options = {
-                "Kết quả giao dịch: Thắng": "reason_win" if countdown_next == "should_trade" else "reason_win_short",
-                "Kết quả giao dịch: Thua": "reason_lose" if countdown_next == "should_trade" else "reason_lose_short"
-            }
-            keyboard = [[KeyboardButton(opt)] for opt in options.keys()]
-            reply_markup = ReplyKeyboardMarkup(keyboard, one_time_keyboard=True, resize_keyboard=True)
-            await update.message.reply_text(
-                f"✅ Hợp lệ! Còn {con_lai} phút để giao dịch.\n\nKhi xong, hãy chọn kết quả giao dịch:",
-                reply_markup=reply_markup
-            )
-            # Đảm bảo user_id luôn được định nghĩa trước khi dùng
-            user_id = update.effective_user.id if update.effective_user else None
-            if user_id is not None:
-                user_states[user_id] = countdown_next
-            return TRADE_RESULT
+            
+            # Kiểm tra nếu còn ít phút (1-4 phút) thì hỏi số mặt cười
+            if 1 <= con_lai <= 4:
+                countdown_next = context.user_data.get('countdown_next') if context.user_data else None
+                # Tạo 3 lựa chọn ngẫu nhiên với số 3 và 2 số khác
+                other_numbers = [5, 8, 9, 12, 15]
+                random.shuffle(other_numbers)
+                choices = [3, other_numbers[0], other_numbers[1]]
+                random.shuffle(choices)
+                
+                keyboard = [[KeyboardButton(str(choice))] for choice in choices]
+                reply_markup = ReplyKeyboardMarkup(keyboard, one_time_keyboard=True, resize_keyboard=True)
+                
+                await update.message.reply_text(
+                    f"⏰ Còn {con_lai} phút!\n\nĐã xuất hiện bao nhiêu mặt cười rồi?",
+                    reply_markup=reply_markup
+                )
+                
+                # Lưu thông tin để xử lý tiếp
+                if context.user_data:
+                    context.user_data['waiting_for_smile_count'] = True
+                    context.user_data['countdown_next'] = countdown_next
+                    context.user_data['con_lai'] = con_lai
+                    context.user_data['correct_answer'] = 3
+                return
+            else:
+                # Xử lý bình thường nếu còn nhiều phút
+                countdown_next = context.user_data.get('countdown_next') if context.user_data else None
+                options = {
+                    "Kết quả giao dịch: Thắng": "reason_win" if countdown_next == "should_trade" else "reason_win_short",
+                    "Kết quả giao dịch: Thua": "reason_lose" if countdown_next == "should_trade" else "reason_lose_short"
+                }
+                keyboard = [[KeyboardButton(opt)] for opt in options.keys()]
+                reply_markup = ReplyKeyboardMarkup(keyboard, one_time_keyboard=True, resize_keyboard=True)
+                await update.message.reply_text(
+                    f"✅ Hợp lệ! Còn {con_lai} phút để giao dịch.\n\nKhi xong, hãy chọn kết quả giao dịch:",
+                    reply_markup=reply_markup
+                )
+                # Đảm bảo user_id luôn được định nghĩa trước khi dùng
+                user_id = update.effective_user.id if update.effective_user else None
+                if user_id is not None:
+                    user_states[user_id] = countdown_next
+                return TRADE_RESULT
 
     # Nếu không phải các trường hợp trên, hiển thị menu chính
     keyboard = [

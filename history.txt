@@ -12,3 +12,11 @@
 2025-07-09 19:10:45 | Short | Thắng | tuân thủ kết hoạch | 2R
 2025-07-09 19:27:27 | Short | Thua | Không tuân thủ quy tắc khi chưa có măc cười màu đỏ | 2R
 2025-07-10 08:13:42 | Long | Thắng | phút thứ 22 mới vào | 2R
+2025-07-10 07:59:26 | Long | Thua | Sai vwap, xu hướng xuống hồi về đường tại vwap | 1.67R
+2025-07-10 08:03:32 | Long | Thua | Sai vwap, vào lại lần 2 fomo hy vọng | 1.67R
+2025-07-10 13:16:19 | Long | Thua | Cây candle mặc cười không đẹp bên dưới râu thấp | 1.67R
+2025-07-10 13:38:34 | Long | Thua | Dump 10 giá chuẩn bị | 1.67R
+2025-07-10 13:56:44 | Short | Thua | Điểm vào rất ngu | 1.67R
+2025-07-11 01:24:46 | Long | Thua | 10 giá rồi mà nó còn lên nữa sao ? | 1.67R
+2025-07-11 02:52:18 | Long | Thua | Vì nó là forex thôi 😊 | 1.67R
+2025-07-11 05:44:55 | Short | Thua | Giá cách vwap 10 giá đánh ngược bị quét SL | 1.67R
