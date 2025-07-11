@@ -9,11 +9,12 @@ import asyncio
 logging.basicConfig(level=logging.INFO)
 
 # <editor-fold desc="Cấu hình Bot">
-BOT_TOKEN = "8083673988:AAERSdSxEp9NNZFBK9GSOr2C1UL7lmJj3UE"
+BOT_TOKEN = "7730346262:AAFbVKMOZOe_7JHxpuKfzxkjVU4PFuKsWCo"
 
 NOTE = (
-    "💡 Sao rất nhiều lệnh trade: Nên chia nhỏ lệnh, tránh dồn một cục để bị quét một lần!\n"
-    "💡 SL thì giữ nguyên, không cần di chuyển nếu giá chưa chạy 1500 giá."
+    "💡 Cố định stoploss bằng 1.5 giá và 1.67R là ổn định dài không cần thêm\n"
+    "💡 Đừng tham lam, chỉ cần 1.67R là đủ, không vào thêm lệnh\n"
+    "💡 Tham sẽ mất hết, giữ kỷ luật với SL 1.5 giá và TP 1.67R"
 )
 # </editor-fold>
 
@@ -33,18 +34,16 @@ WORKFLOW = {
                    "⚠️ ĐANG ĐÁNH NGƯỢC ĐÓ ⚠️\n\n"
                    "🔥 GIÁ ĐÃ CÁCH VWAP QUÁ XA - RỦI RO CỰC CAO! 🔥\n\n"
                    "💀 NẾU ĐÁNH NGƯỢC THÌ ENTRY PHẢI LÀ ĐIỂM ĐẦU TIÊN MỞ CỬA! 💀\n\n"
-                   "⚡ VÌ THỊ TRƯỜNG SẼ QUÉT HẾT! ⚡\n\n" + NOTE, 
-                 
-        "options": {}
+                   "⚡ VÌ THỊ TRƯỜNG SẼ QUÉT HẾT! ⚡\n\n" + NOTE + "\n\nTiếp tục: Mặt cười màu gì?\n0 = Xanh\n1 = Đỏ",
+        "options": {"1": "should_short_nghich", "0": "wait_short_nghich"}
     },
     "vwap_warning_above_red": {
         "question": "🚨 CẢNH BÁO NGUY HIỂM! 🚨\n\n"
                    "⚠️ ĐANG ĐÁNH NGƯỢC ⚠️\n\n"
                    "🔥 GIÁ ĐÃ CÁCH VWAP QUÁ XA - RỦI RO CỰC CAO! 🔥\n\n"
                    "💀 NẾU ĐÁNH NGƯỢC THÌ ENTRY PHẢI LÀ ĐIỂM ĐẦU TIÊN MỞ CỬA! 💀\n\n"
-                   "⚡ VÌ THỊ TRƯỜNG SẼ QUÉT HẾT! ⚡\n\n" + NOTE, 
-                  
-        "options": {}
+                   "⚡ VÌ THỊ TRƯỜNG SẼ QUÉT HẾT! ⚡\n\n" + NOTE + "\n\nTiếp tục: Mặt cười màu gì?\n0 = Xanh\n1 = Đỏ",
+        "options": {"0": "should_trade_nghich", "1": "end_no_trade_nghich"}
     },
     "vwap_warning_below_green": {
         "question": "⚠️ HÃY CẨN THẬN ĐẢO CHIỀU MÀY!\n\nGiá đã cách VWAP quá xa, rủi ro cao!\n\n" + NOTE,
@@ -97,6 +96,22 @@ WORKFLOW = {
     },
     "reason_lose_short": {
         "question": "Bạn thua (SHORT) vì lý do gì? (Nhập lý do)",
+        "options": {}
+    },
+    "should_short_nghich": {
+        "question": "🔴 Nên vào lệnh SHORT! (Giao dịch ngược xu hướng)\n\n" + NOTE + "\n\nBig trader vào lệnh thứ mấy? (Nhập số)",
+        "options": {}
+    },
+    "wait_short_nghich": {
+        "question": ("❌ Vào là MẤT TIỀN\n" * 6 + NOTE),
+        "options": {}
+    },
+    "should_trade_nghich": {
+        "question": "✅ Nên vào lệnh! (Giao dịch ngược xu hướng)\n\n" + NOTE + "\n\nBig trader vào lệnh thứ mấy? (Nhập số)",
+        "options": {}
+    },
+    "end_no_trade_nghich": {
+        "question": ("❌ VÀO LÀ MẤT TIỀN NHA MẦY\n" * 6 + NOTE),
         "options": {}
     }
 }
@@ -175,6 +190,10 @@ async def handle_response(update: Update, context: ContextTypes.DEFAULT_TYPE):
         result = "Thắng" if "win" in current_step else "Thua"
         trade_type = "Long" if "short" not in current_step else "Short"
         reason = user_input
+        # Nếu là giao dịch ngược xu hướng thì thêm ghi chú
+        if context.user_data is not None and context.user_data.get('nghich_huong'):
+            reason = f"{reason} (GIAO DỊCH NGƯỢC XU HƯỚNG)"
+            context.user_data['nghich_huong'] = False
         r_value = "1.67R"
         with open("history.txt", "a", encoding="utf-8") as f:
             f.write(f"{now} | {trade_type} | {result} | {reason} | {r_value}\n")
@@ -194,13 +213,23 @@ async def handle_response(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Nếu chọn đúng option
     if options and user_input in options:
         next_step = options[user_input]
+        # Nếu là nhánh ngược xu hướng thì đánh dấu biến
+        if current_step in ["vwap_warning_above_green", "vwap_warning_above_red"]:
+            if context.user_data is not None:
+                context.user_data['nghich_huong'] = True
         # Nếu là bước tín hiệu hợp lệ (should_trade hoặc should_short), hỏi phút và đặt biến trạng thái
-        if next_step in ["should_trade", "should_short"]:
+        if next_step in ["should_trade", "should_short", "should_trade_nghich", "should_short_nghich"]:
             user_states.pop(user_id, None)
             if context.user_data is not None:
                 context.user_data['waiting_for_minute'] = True
                 context.user_data['countdown_next'] = next_step
             await update.message.reply_text("Nhập phút big trader vào lệnh:")
+            return
+        # Nếu là bước hỏi số lệnh big trader (ngược xu hướng)
+        if next_step in ["should_trade_nghich", "should_short_nghich"]:
+            if context.user_data is not None:
+                context.user_data['waiting_for_bigtrader_order'] = True
+            await update.message.reply_text("Big trader vào lệnh thứ mấy? (Nhập số)")
             return
         user_states[user_id] = next_step
         await send_question(update, next_step)
@@ -479,17 +508,48 @@ async def welcome(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if context.user_data is not None and context.user_data.get('waiting_for_minute'):
         context.user_data['waiting_for_minute'] = False
         if not update.message or not update.message.text:
-            context.user_data['waiting_for_minute'] = True
+            # Trả về menu chính luôn
+            keyboard = [
+                [KeyboardButton("Vào")],
+                [KeyboardButton("Lịch sử giao dịch")],
+                [KeyboardButton("Kết quả thắng")],
+                [KeyboardButton("Kết quả thua")],
+            ]
+            reply_markup = ReplyKeyboardMarkup(keyboard, one_time_keyboard=True, resize_keyboard=True)
+            await update.message.reply_text(
+                "Chào mừng! Chọn một chức năng bên dưới:",
+                reply_markup=reply_markup
+            )
             return
         try:
             phut_nhap = int(update.message.text.strip())
             if not (0 <= phut_nhap <= 59):
-                await update.message.reply_text("Vui lòng nhập số phút từ 0 đến 59!")
-                context.user_data['waiting_for_minute'] = True
+                # Trả về menu chính luôn
+                keyboard = [
+                    [KeyboardButton("Vào")],
+                    [KeyboardButton("Lịch sử giao dịch")],
+                    [KeyboardButton("Kết quả thắng")],
+                    [KeyboardButton("Kết quả thua")],
+                ]
+                reply_markup = ReplyKeyboardMarkup(keyboard, one_time_keyboard=True, resize_keyboard=True)
+                await update.message.reply_text(
+                    "Chào mừng! Chọn một chức năng bên dưới:",
+                    reply_markup=reply_markup
+                )
                 return
         except Exception:
-            await update.message.reply_text("Vui lòng nhập số phút hợp lệ!")
-            context.user_data['waiting_for_minute'] = True
+            # Trả về menu chính luôn
+            keyboard = [
+                [KeyboardButton("Vào")],
+                [KeyboardButton("Lịch sử giao dịch")],
+                [KeyboardButton("Kết quả thắng")],
+                [KeyboardButton("Kết quả thua")],
+            ]
+            reply_markup = ReplyKeyboardMarkup(keyboard, one_time_keyboard=True, resize_keyboard=True)
+            await update.message.reply_text(
+                "Chào mừng! Chọn một chức năng bên dưới:",
+                reply_markup=reply_markup
+            )
             return
         phut_hien_tai = datetime.datetime.now().minute
         da_troi = so_phut_da_troi_qua(phut_nhap, phut_hien_tai)
@@ -563,15 +623,52 @@ async def ask_minute(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def handle_minute(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message or not update.message.text:
-        return ASK_MINUTE
+        # Trả về menu chính luôn
+        keyboard = [
+            [KeyboardButton("Vào")],
+            [KeyboardButton("Lịch sử giao dịch")],
+            [KeyboardButton("Kết quả thắng")],
+            [KeyboardButton("Kết quả thua")],
+        ]
+        reply_markup = ReplyKeyboardMarkup(keyboard, one_time_keyboard=True, resize_keyboard=True)
+        if update.message:
+            await update.message.reply_text(
+                "Chào mừng! Chọn một chức năng bên dưới:",
+                reply_markup=reply_markup
+            )
+        return ConversationHandler.END
     try:
         phut_nhap = int(update.message.text.strip())
         if not (0 <= phut_nhap <= 59):
-            await update.message.reply_text("Vui lòng nhập số phút từ 0 đến 59!")
-            return ASK_MINUTE
+            # Trả về menu chính luôn
+            keyboard = [
+                [KeyboardButton("Vào")],
+                [KeyboardButton("Lịch sử giao dịch")],
+                [KeyboardButton("Kết quả thắng")],
+                [KeyboardButton("Kết quả thua")],
+            ]
+            reply_markup = ReplyKeyboardMarkup(keyboard, one_time_keyboard=True, resize_keyboard=True)
+            if update.message:
+                await update.message.reply_text(
+                    "Chào mừng! Chọn một chức năng bên dưới:",
+                    reply_markup=reply_markup
+                )
+            return ConversationHandler.END
     except Exception:
-        await update.message.reply_text("Vui lòng nhập số phút hợp lệ!")
-        return ASK_MINUTE
+        # Trả về menu chính luôn
+        keyboard = [
+            [KeyboardButton("Vào")],
+            [KeyboardButton("Lịch sử giao dịch")],
+            [KeyboardButton("Kết quả thắng")],
+            [KeyboardButton("Kết quả thua")],
+        ]
+        reply_markup = ReplyKeyboardMarkup(keyboard, one_time_keyboard=True, resize_keyboard=True)
+        if update.message:
+            await update.message.reply_text(
+                "Chào mừng! Chọn một chức năng bên dưới:",
+                reply_markup=reply_markup
+            )
+        return ConversationHandler.END
     phut_hien_tai = datetime.datetime.now().minute
     da_troi = so_phut_da_troi_qua(phut_nhap, phut_hien_tai)
     if da_troi >= 17:
@@ -634,7 +731,7 @@ async def handle_result_callback(update: Update, context: ContextTypes.DEFAULT_T
     trade_type = "Long"
     if context.user_data and context.user_data.get('countdown_next') == "should_short":
         trade_type = "Short"
-    if context.user_data and context.user_data.get('waiting_for_reason'):
+    if context.user_data is not None and context.user_data.get('waiting_for_reason'):
         waiting = context.user_data.get('waiting_for_reason')
         if waiting:
             result, trade_type = context.user_data.pop('waiting_for_reason')
