@@ -9,7 +9,7 @@ import asyncio
 logging.basicConfig(level=logging.INFO)
 
 # <editor-fold desc="Cấu hình Bot">
-BOT_TOKEN = "7730346262:AAFbVKMOZOe_7JHxpuKfzxkjVU4PFuKsWCo"
+BOT_TOKEN = "7960761742:AAGc5-JKva4qIGrBaNxVqMK_C9VX8r-RgVI"
 
 NOTE = (
     "💡 Cố định stoploss bằng 1.5 giá và 1.67R là ổn định dài không cần thêm\n"
@@ -559,6 +559,11 @@ async def welcome(update: Update, context: ContextTypes.DEFAULT_TYPE):
         else:
             con_lai = 17 - da_troi
             
+            # Tính thời gian hết hạn cụ thể
+            now = datetime.datetime.now()
+            end_time = now + datetime.timedelta(minutes=con_lai)
+            end_time_str = end_time.strftime("%H:%M")
+            
             # Kiểm tra nếu còn ít phút (1-4 phút) thì hỏi số mặt cười
             if 1 <= con_lai <= 4:
                 countdown_next = context.user_data.get('countdown_next') if context.user_data else None
@@ -572,7 +577,7 @@ async def welcome(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 reply_markup = ReplyKeyboardMarkup(keyboard, one_time_keyboard=True, resize_keyboard=True)
                 
                 await update.message.reply_text(
-                    f"⏰ Còn {con_lai} phút!\n\nĐã xuất hiện bao nhiêu mặt cười rồi?",
+                    f"⏰ Còn {con_lai} phút (hết hạn lúc {end_time_str})!\n\nĐã xuất hiện bao nhiêu mặt cười rồi?",
                     reply_markup=reply_markup
                 )
                 
@@ -593,7 +598,7 @@ async def welcome(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 keyboard = [[KeyboardButton(opt)] for opt in options.keys()]
                 reply_markup = ReplyKeyboardMarkup(keyboard, one_time_keyboard=True, resize_keyboard=True)
                 await update.message.reply_text(
-                    f"✅ Hợp lệ! Còn {con_lai} phút để giao dịch.\n\nKhi xong, hãy chọn kết quả giao dịch:",
+                    f"✅ Hợp lệ! Còn {con_lai} phút để giao dịch (hết hạn lúc {end_time_str}).\n\nKhi xong, hãy chọn kết quả giao dịch:",
                     reply_markup=reply_markup
                 )
                 # Đảm bảo user_id luôn được định nghĩa trước khi dùng
@@ -676,6 +681,12 @@ async def handle_minute(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return ConversationHandler.END
     else:
         con_lai = 17 - da_troi
+        
+        # Tính thời gian hết hạn cụ thể
+        now = datetime.datetime.now()
+        end_time = now + datetime.timedelta(minutes=con_lai)
+        end_time_str = end_time.strftime("%H:%M")
+        
         countdown_next = context.user_data.get('countdown_next') if context.user_data else None
         options = {
             "Kết quả giao dịch: Thắng": "reason_win" if countdown_next == "should_trade" else "reason_win_short",
@@ -684,7 +695,7 @@ async def handle_minute(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard = [[KeyboardButton(opt)] for opt in options.keys()]
         reply_markup = ReplyKeyboardMarkup(keyboard, one_time_keyboard=True, resize_keyboard=True)
         await update.message.reply_text(
-            f"✅ Hợp lệ! Còn {con_lai} phút để giao dịch.\n\nKhi xong, hãy chọn kết quả giao dịch:",
+            f"✅ Hợp lệ! Còn {con_lai} phút để giao dịch (hết hạn lúc {end_time_str}).\n\nKhi xong, hãy chọn kết quả giao dịch:",
             reply_markup=reply_markup
         )
         # Đảm bảo user_id luôn được định nghĩa trước khi dùng
