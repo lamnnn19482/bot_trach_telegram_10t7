@@ -9,7 +9,7 @@ import asyncio
 logging.basicConfig(level=logging.INFO)
 
 # <editor-fold desc="Cấu hình Bot">
-BOT_TOKEN = "7960761742:AAGc5-JKva4qIGrBaNxVqMK_C9VX8r-RgVI"
+BOT_TOKEN = "7730346262:AAFbVKMOZOe_7JHxpuKfzxkjVU4PFuKsWCo"
 
 NOTE = (
     "💡 Cố định stoploss bằng 1.5 giá và 1.67R là ổn định dài không cần thêm\n"
